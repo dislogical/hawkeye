@@ -1,0 +1,2 @@
+Copyright © {{ props.inception_year }} {{ props.copyright_owner }}
+SPDX-License-Identifier: {{ props.spdx }}
