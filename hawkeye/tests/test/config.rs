@@ -83,7 +83,7 @@ text = "Copyright 2026 Acme"
     assert!(
         validation
             .to_string()
-            .contains("exactly one of `builtin`, `path`, or `text` must be set")
+            .contains("if neither `path` or `text` is set, `license` must be set")
     );
 
     for (name, source) in [
@@ -92,12 +92,26 @@ text = "Copyright 2026 Acme"
             "multiple.toml",
             "[header]\nbuiltin = \"Apache-2.0\"\ntext = \"Copyright 2026 Acme\"\n",
         ),
+        (
+            "multiple.toml",
+            "[header]\npath = \"some-file.txt\"\ntext = \"Copyright 2026 Acme\"\n",
+        ),
     ] {
         project.write(name, source);
         let config = Config::load(project.path().join(name)).expect("deserialize header fields");
         let err = config
             .validate()
             .expect_err("header source must be exactly one value");
+        assert_eq!(err.kind(), ErrorKind::ConfigInvalid);
+    }
+
+    {
+        let (name, source) = ("multiple.toml", "[header]\nspdx = true");
+        project.write(name, source);
+        let config = Config::load(project.path().join(name)).expect("deserialize header fields");
+        let err = config
+            .validate()
+            .expect_err("`license` must be set if `spdx` is true");
         assert_eq!(err.kind(), ErrorKind::ConfigInvalid);
     }
 }

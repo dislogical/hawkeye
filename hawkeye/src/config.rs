@@ -126,8 +126,9 @@ impl Config {
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct HeaderConfig {
-    /// The built-in template key, when using a bundled header.
-    pub builtin: Option<String>,
+    /// The license SPDX key, when using a standard header.
+    #[serde(alias = "builtin")]
+    pub license: Option<String>,
     /// The template file.
     ///
     /// [`Config::load`] renders path templates and resolves relative paths from the config
@@ -135,6 +136,9 @@ pub struct HeaderConfig {
     pub path: Option<PathBuf>,
     /// The inline template, when the header is stored in the config file.
     pub text: Option<String>,
+    /// Whether to emit the SPDX header.
+    #[serde(default)]
+    pub spdx: bool,
     /// Case-insensitive words required in a recognized header; defaults to `"copyright"`.
     #[serde(default = "default_keywords")]
     pub keywords: Vec<String>,
@@ -275,19 +279,28 @@ impl Validator {
     }
 
     fn header(&mut self, header: &HeaderConfig) {
-        let source_count = usize::from(header.builtin.is_some())
-            + usize::from(header.path.is_some())
-            + usize::from(header.text.is_some());
-        if source_count != 1 {
-            self.issue(
+        let source_count = usize::from(header.path.is_some()) + usize::from(header.text.is_some());
+        match source_count {
+            0 if header.license.is_none() => self.issue(
                 "header",
-                "exactly one of `builtin`, `path`, or `text` must be set",
-            );
+                "if neither `path` or `text` is set, `license` must be set",
+            ),
+            1 if header.license.is_some() && !header.spdx => self.issue(
+                "header",
+                "if `path` or `text` is set, `license` cannot be set without `spdx`",
+            ),
+            2.. => self.issue("header", "both `path` and `text` cannot be set"),
+            // The all-good case
+            _ => (),
         }
 
-        if let Some(value) = &header.builtin {
-            self.non_blank("header.builtin", value);
-            self.no_nul("header.builtin", value);
+        if header.spdx && header.license.is_none() {
+            self.issue("header.license", "`license` must be set if `spdx` is true");
+        }
+
+        if let Some(value) = &header.license {
+            self.non_blank("header.license", value);
+            self.no_nul("header.license", value);
         }
         if let Some(value) = &header.path
             && value.as_os_str().is_empty()

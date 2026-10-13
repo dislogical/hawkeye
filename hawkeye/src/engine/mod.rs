@@ -85,6 +85,10 @@ fn file_time_to_year(time: SystemTime) -> Option<i16> {
     Some(ts.to_zoned(TimeZone::system()).year())
 }
 
+fn spdx_id_text(license: String) -> String {
+    format!("\nSPDX-License-Identifier: {}", license)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum HeaderTarget {
     Present,
@@ -169,7 +173,10 @@ impl Engine {
         let (file_filter, walk_filter) =
             discovery::compile_file_filters(&root, &files.includes, &files.excludes)?;
 
-        let (template, header_path) = if let Some(content) = header.text {
+        let (template, header_path) = if let Some(mut content) = header.text {
+            if header.spdx {
+                content += &spdx_id_text(header.license.unwrap());
+            }
             (HeaderTemplate::new(content)?, None)
         } else if let Some(path) = header.path {
             let path = path.canonicalize().map_err(|err| {
@@ -179,27 +186,35 @@ impl Engine {
                 )
                 .with_source(err)
             })?;
-            let content = fs::read_to_string(&path).map_err(|err| {
+            let mut content = fs::read_to_string(&path).map_err(|err| {
                 Error::new(
                     ErrorKind::Unexpected,
                     format!("cannot read header template {}", path.display()),
                 )
                 .with_source(err)
             })?;
+            if header.spdx {
+                content += &spdx_id_text(header.license.unwrap());
+            }
             (HeaderTemplate::new(content)?, Some(path))
-        } else if let Some(key) = header.builtin {
-            let content = builtin::HEADERS.get(key.as_str()).copied().ok_or_else(|| {
-                let available = builtin::HEADERS
-                    .keys()
-                    .copied()
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                Error::new(
-                    ErrorKind::ConfigInvalid,
-                    format!("unknown header.builtin {key:?}; available values are {available}"),
-                )
-            })?;
-            (HeaderTemplate::new(content)?, None)
+        } else if let Some(key) = header.license {
+            if header.spdx {
+                let content = format!("SPDX-License-Identifier: {key}");
+                (HeaderTemplate::new(content)?, None)
+            } else {
+                let content = builtin::HEADERS.get(key.as_str()).copied().ok_or_else(|| {
+                    let available = builtin::HEADERS
+                        .keys()
+                        .copied()
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    Error::new(
+                        ErrorKind::ConfigInvalid,
+                        format!("unknown header.builtin {key:?}; available values are {available}"),
+                    )
+                })?;
+                (HeaderTemplate::new(content)?, None)
+            }
         } else {
             return Err(Error::new(
                 ErrorKind::ConfigInvalid,

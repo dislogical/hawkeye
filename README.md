@@ -45,7 +45,7 @@ Add `licenserc.toml` to the project root. This minimal configuration uses the bu
 
 ```toml
 [header]
-builtin = "Apache-2.0"
+license = "Apache-2.0"
 
 [props]
 copyright_owner = "Acme Developers"
@@ -126,10 +126,18 @@ The following example shows every configuration section. Field names are snake c
 
 ```toml
 [header]
-# Choose exactly one source. Built-in keys are case-sensitive.
-builtin = "Apache-2.0"
+# Choose exactly one source. License keys are case-sensitive.
 # path = "{{ config_dir }}/HEADER.txt"
 # text = "Copyright {{ props.inception_year }} {{ props.copyright_owner }}"
+
+# Optionally, a known license may also be specified.
+# If spdx is false, emit the accepted license header for the chosen license.
+# if spdx is true, emit an 'SPDX-License-Identifier' line as desrbed below..
+license = "Apache-2.0"
+# (Requires `license` to be set)
+# If `path` or `text` is set, emit an 'SPDX-License-Identifier' line below the block specified.
+# Otherwise, emit _just_ the 'SPDX-License-Identifier' line.
+spdx = false
 
 # Every keyword must occur, case-insensitively, before an existing comment can
 # be replaced or removed. The default is ["copyright"].

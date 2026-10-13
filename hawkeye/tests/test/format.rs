@@ -473,11 +473,9 @@ fn format_builtin_spdx() {
     project.write(
         "licenserc.toml",
         r#"[header]
-builtin = "SPDX"
+license = "Apache-2.0"
+spdx = true
 keywords = ["SPDX"]
-
-[props]
-spdx = "Apache-2.0"
 "#,
     );
     project.write("source.rs", "fn main() {}\n");
@@ -495,12 +493,9 @@ fn format_builtin_spdx_long() {
     project.write(
         "licenserc.toml",
         r#"[header]
-builtin = "SPDX-Long"
-
-[props]
-spdx = "Apache-2.0"
-copyright_owner = "Acme Developers"
-inception_year = "2026"
+text = "Copyright 2026 Acme Developers"
+license = "Apache-2.0"
+spdx = true
 "#,
     );
     project.write("source.rs", "fn main() {}\n");
@@ -508,6 +503,6 @@ inception_year = "2026"
     assert_exit(&project.run(["format"]), 0);
     assert_eq!(
         project.read("source.rs"),
-        "// Copyright © 2026 Acme Developers\n// SPDX-License-Identifier: Apache-2.0\n\nfn main() {}\n"
+        "// Copyright 2026 Acme Developers\n// SPDX-License-Identifier: Apache-2.0\n\nfn main() {}\n"
     );
 }
